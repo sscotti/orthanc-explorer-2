@@ -12,6 +12,7 @@ import TokenLinkButton from "./TokenLinkButton.vue"
 import BulkLabelsModal from "./BulkLabelsModal.vue"
 import SourceType from '../helpers/source-type';
 import CreateWorklistModal from "./CreateWorklistModal.vue";
+import AIButtonGroup from "./AIButtonGroup.vue";
 import axios from "axios"
 
 
@@ -870,7 +871,7 @@ export default {
             }
         }
     },
-    components: { Modal, ShareModal, ModifyModal, TokenLinkButton, BulkLabelsModal, AddSeriesModal, CreateWorklistModal }
+    components: { Modal, ShareModal, ModifyModal, TokenLinkButton, BulkLabelsModal, AddSeriesModal, CreateWorklistModal, AIButtonGroup }
 }
 </script>
 
@@ -1170,6 +1171,15 @@ export default {
             </button>
             <CreateWorklistModal :id="'create-modal-worklists-' + this.resourceOrthancId" :orthancStudyId="this.resourceOrthancId"  :reloadWindowAfterCreation="false"/>
         </div>
+        <div class="ai-button-group-wrapper">
+            <AIButtonGroup 
+                :resourceOrthancId="resourceOrthancId"
+                :resourceDicomUid="resourceDicomUid"
+                :resourceLevel="resourceLevel"
+                :customClass="customClass"
+                :smallIcons="smallIcons"
+            />
+        </div>
     </div>
 </template>
 
@@ -1199,5 +1209,10 @@ export default {
 
 .fa-button {
     line-height: 1.5;
+}
+
+.ai-button-group-wrapper {
+    display: block;
+    margin-top: 0.5rem;
 }
 </style>

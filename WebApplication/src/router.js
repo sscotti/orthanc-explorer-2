@@ -7,6 +7,7 @@ import AuditLogs from './components/AuditLogs.vue'
 import StudyList from './components/StudyList.vue'
 import SideBar from './components/SideBar.vue'
 import NotFound from './components/NotFound.vue'
+import AI from './components/AI.vue'
 import { baseOe2Url } from "./globalConfigurations"
 
 console.log('Base URL for router: ', baseOe2Url);
@@ -70,6 +71,14 @@ export const router = createRouter({
         ContentView: AuditLogs,
       },
       name: 'audit-logs'
+    },
+    {
+      path: '/ai',
+      components: {
+        SideBarView: SideBar,
+        ContentView: AI,
+      },
+      name: 'ai'
     },
     {
       path: '/:pathMatch(.*)',

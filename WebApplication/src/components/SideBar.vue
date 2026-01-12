@@ -55,6 +55,14 @@ export default {
         hasAccessToSettings() {
             return this.uiOptions.EnableSettings;
         },
+        hasAccessToAI() {
+            // Default to true if uiOptions not loaded yet or EnableAI is undefined
+            // Only hide if EnableAI is explicitly set to false
+            if (!this.uiOptions) {
+                return true; // Default to showing if config not loaded yet
+            }
+            return this.uiOptions.EnableAI !== false;
+        },
         hasAccessToWorklists() {
             return "orthanc-worklists" in this.installedPlugins && this.installedPlugins["orthanc-worklists"].Enabled && this.uiOptions.EnableWorklists;
         },
@@ -100,7 +108,7 @@ export default {
                 await this.$store.dispatch('studies/updateSource', { 'source-type': SourceType.LOCAL_ORTHANC, 'remote-source': null });
                 this.messageBus.emit('filter-label-changed', label);
             } else {
-                this.$router.push({name: 'local-studies-list', query: {'labels': label}});
+                this.$router.push({ name: 'local-studies-list', query: { 'labels': label } });
             }
         },
         isSelectedLabel(label) {
@@ -169,15 +177,15 @@ export default {
     <div class="nav-side-menu">
         <div class="nav-side-content">
             <div v-if="!hasCustomLogo">
-                <img class="orthanc-logo" src="../assets/images/orthanc.png"/>
+                <img class="orthanc-logo" src="../assets/images/orthanc.png" />
             </div>
             <div v-if="hasCustomLogo">
                 <img class="custom-logo" :src="customLogoUrl" />
             </div>
             <div v-if="hasCustomLogo">
                 <p class="powered-by-orthanc">
-                powered by
-                <img src="../assets/images/orthanc.png" />
+                    powered by
+                    <img src="../assets/images/orthanc.png" />
                 </p>
             </div>
             <div v-if="uiOptions.ShowOrthancName" class="orthanc-name">
@@ -189,12 +197,19 @@ export default {
                         <router-link class="router-link" to="/">
                             <i class="fa fa-x-ray fa-lg menu-icon"></i>{{ $t('local_studies') }}
                             <span class="study-count ms-auto">{{ displayedStudyCount }} / {{ statistics.CountStudies
-                            }}</span>
+                                }}</span>
+                        </router-link>
+                    </li>
+                    <li v-if="hasAccessToAI" class="d-flex align-items-center fix-router-link">
+                        <router-link class="router-link" to="/ai">
+                            <i class="fa fa-brain fa-lg menu-icon"></i>AI
+                            <span class="study-count ms-auto">{{ displayedStudyCount }} / {{ statistics.CountStudies
+                                }}</span>
                         </router-link>
                     </li>
                     <ul v-if="allLabels.length > 0" class="sub-menu" id="labels-list">
-                        <li v-for="label in allLabels" :key="label"
-                        v-bind:class="{ 'active': isSelectedLabel(label) }" @click="selectLabel(label)">
+                        <li v-for="label in allLabels" :key="label" v-bind:class="{ 'active': isSelectedLabel(label) }"
+                            @click="selectLabel(label)">
                             <i class="fa fa-tag label-icon"></i>
                             {{ label }}
                             <span class="study-count ms-auto">{{ labelsStudyCount[label] }}</span>
@@ -207,7 +222,7 @@ export default {
                         <span class="ms-auto"></span>
                     </li>
                     <div v-if="uiOptions.EnableUpload" class="collapse" id="upload-handler">
-                        <UploadHandler :showStudyDetails="true"/>
+                        <UploadHandler :showStudyDetails="true" />
                     </div>
 
                     <li v-if="hasQueryableDicomModalities" class="d-flex align-items-center" data-bs-toggle="collapse"
@@ -227,8 +242,8 @@ export default {
                             <span v-else-if="this.isEchoSuccess(modality)" class="ms-auto"><i
                                     class="bi bi-check2 text-success echo-status" data-bs-toggle="tooltip"
                                     title="C-Echo succeeded"></i></span>
-                            <span v-else class="ms-auto"><i class="bi bi-x-lg text-danger echo-status" data-bs-toggle="tooltip"
-                                    title="C-Echo failed"></i></span>
+                            <span v-else class="ms-auto"><i class="bi bi-x-lg text-danger echo-status"
+                                    data-bs-toggle="tooltip" title="C-Echo failed"></i></span>
                         </li>
                     </ul>
 
@@ -238,7 +253,8 @@ export default {
                         <span class="arrow ms-auto"></span>
                     </li>
                     <ul class="sub-menu collapse" id="dicomweb-servers-list">
-                        <li v-for="server in queryableDicomWebServers" :key="server" v-bind:class="{ 'active': this.isSelectedDicomWebServer(server) }">
+                        <li v-for="server in queryableDicomWebServers" :key="server"
+                            v-bind:class="{ 'active': this.isSelectedDicomWebServer(server) }">
                             <router-link class="router-link"
                                 :to="{ path: '/filtered-studies', query: { 'source-type': 'dicom-web', 'remote-source': server } }">
                                 {{ server }}
@@ -257,13 +273,16 @@ export default {
                     </li>
                     <ul class="sub-menu collapse" id="settings-list">
                         <li>
-                            <router-link class="router-link" to="/settings">{{ $t('settings.system_info') }}</router-link>
+                            <router-link class="router-link" to="/settings">{{ $t('settings.system_info')
+                                }}</router-link>
                         </li>
                         <li v-if="hasAccessToSettingsLabelsAndPermissions">
-                            <router-link class="router-link" to="/settings-labels">{{ $t('settings.available_labels_title') }}</router-link>
+                            <router-link class="router-link" to="/settings-labels">{{
+                                $t('settings.available_labels_title') }}</router-link>
                         </li>
                         <li v-if="hasAccessToSettingsLabelsAndPermissions">
-                            <router-link class="router-link" to="/settings-permissions">{{ $t('settings.permissions') }}</router-link>
+                            <router-link class="router-link" to="/settings-permissions">{{ $t('settings.permissions')
+                                }}</router-link>
                         </li>
                     </ul>
 
@@ -280,7 +299,8 @@ export default {
                     </li>
                     <li v-if="hasLogout" class="d-flex align-items-center" data-bs-toggle="collapse"
                         data-bs-target="#profile-list">
-                        <i class="fa fa-user fa-lg menu-icon"></i><span v-if="hasUserProfile">{{ userProfile.name }}</span><span v-if="!hasUserProfile">{{ $t('profile') }}</span>
+                        <i class="fa fa-user fa-lg menu-icon"></i><span v-if="hasUserProfile">{{ userProfile.name
+                            }}</span><span v-if="!hasUserProfile">{{ $t('profile') }}</span>
                         <span class="arrow ms-auto"></span>
                     </li>
                     <ul class="sub-menu collapse" id="profile-list" ref="profile-collapsible">
@@ -291,7 +311,8 @@ export default {
                         </li>
                         <li v-if="hasLogout" class="d-flex align-items-center fix-router-link">
                             <a v-bind:href="'#'" @click="logout($event)">
-                                <i class="fa fa-solid fa-arrow-right-from-bracket fa-lg menu-icon"></i>{{ $t('logout') }}
+                                <i class="fa fa-solid fa-arrow-right-from-bracket fa-lg menu-icon"></i>{{ $t('logout')
+                                }}
                             </a><span class="ms-auto"></span>
                         </li>
                     </ul>
@@ -307,7 +328,7 @@ export default {
             </div>
             <div class="bottom-side-bar">
                 <div class="bottom-side-bar-button">
-                    <LanguagePicker/>
+                    <LanguagePicker />
                 </div>
             </div>
         </div>
@@ -344,7 +365,7 @@ export default {
     height: 48px;
 }
 
-.powered-by-orthanc > img {
+.powered-by-orthanc>img {
     filter: brightness(50);
     max-width: 50%;
     height: auto;
@@ -373,16 +394,17 @@ export default {
 .bottom-side-bar {
     flex: 1;
     align-self: flex-end;
-    width: 100%;    
+    width: 100%;
     position: relative;
     min-height: 5rem;
 }
 
-.bottom-side-bar-button { /* for the language picker */
+.bottom-side-bar-button {
+    /* for the language picker */
     position: absolute;
     bottom: 1rem;
     width: 100%;
-    height: 3rem;    
+    height: 3rem;
 }
 
 .nav-side-menu ul,
@@ -502,5 +524,4 @@ export default {
     margin-right: 5px;
     line-height: 28px;
 }
-
 </style>

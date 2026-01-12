@@ -9,7 +9,22 @@ export default defineConfig({
   plugins: [vue()],
   server: {
     host: true,
-    port: 3000
+    port: 3000,
+    proxy: {
+      // Proxy CXAS endpoints to Orthanc backend
+      '/cxas': {
+        target: 'http://localhost:8043',
+        changeOrigin: true,
+        secure: false,
+      }
+      // Proxy other Orthanc API endpoints
+      // Match paths that don't start with /ui/app/ (to avoid proxying frontend assets)
+      // '^(?!/(ui/app|@|node_modules|src))': {
+      //   target: 'http://localhost:8043',
+      //   changeOrigin: true,
+      //   secure: false,
+      // }
+    }
   },
   build: {
     chunkSizeWarningLimit: 1000,

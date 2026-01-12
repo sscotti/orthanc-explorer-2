@@ -1,5 +1,5 @@
 <script>
-import {uppie} from "uppie"
+import { uppie } from "uppie"
 import UploadReport from "./UploadReport.vue"
 import api from "../orthancApi"
 
@@ -90,10 +90,43 @@ export default {
         };
     },
     mounted() {
-        uppie(document.querySelector("#filesUpload"), this.uppieUploadHandler);
-        uppie(document.querySelector("#foldersUpload"), this.uppieUploadHandler);
+        this.initializeUppie();
+    },
+    watch: {
+        disabledAfterUpload(newValue) {
+            // Re-initialize uppie if component becomes enabled again
+            if (!newValue) {
+                this.$nextTick(() => {
+                    this.initializeUppie();
+                });
+            }
+        }
     },
     methods: {
+        initializeUppie() {
+            // Use nextTick to ensure DOM elements are rendered before accessing them
+            this.$nextTick(() => {
+                // Use refs if available, otherwise fall back to querySelector
+                const filesUpload = this.$refs.filesUpload || document.querySelector("#filesUpload");
+                const foldersUpload = this.$refs.foldersUpload || document.querySelector("#foldersUpload");
+
+                // Only initialize uppie if elements exist and are not already initialized
+                if (filesUpload && filesUpload.tagName) {
+                    try {
+                        uppie(filesUpload, this.uppieUploadHandler);
+                    } catch (error) {
+                        console.error('Error initializing uppie for filesUpload:', error);
+                    }
+                }
+                if (foldersUpload && foldersUpload.tagName) {
+                    try {
+                        uppie(foldersUpload, this.uppieUploadHandler);
+                    } catch (error) {
+                        console.error('Error initializing uppie for foldersUpload:', error);
+                    }
+                }
+            });
+        },
         onDrop(ev) {
             // console.log("on drop", ev);
             ev.preventDefault();
@@ -112,7 +145,7 @@ export default {
             let studyId = uploadedFileResponse["ParentStudy"];
             if (!this.lastUploadReports[uploadId].uploadedStudiesIds.has(studyId)) {
                 this.lastUploadReports[uploadId].uploadedStudiesIds.add(studyId);
-                
+
                 if (this.showStudyDetails) {
                     const studyResponse = await api.getStudy(studyId);
                     this.lastUploadReports[uploadId].uploadedStudies[studyId] = studyResponse;
@@ -182,8 +215,12 @@ export default {
 
             // reset input for next upload
             if (!this.singleUse) {
-                document.getElementById('filesUpload').value = null;
-                document.getElementById('foldersUpload').value = null;
+                if (this.$refs.filesUpload) {
+                    this.$refs.filesUpload.value = null;
+                }
+                if (this.$refs.foldersUpload) {
+                    this.$refs.foldersUpload.value = null;
+                }
             }
         }
     },
@@ -193,23 +230,27 @@ export default {
 
 <template>
     <div>
-        <div v-if="!disabledAfterUpload" class="upload-handler-drop-zone" :class="{'upload-handler-drop-zone-disabled': uploadDisabled}"  @drop="this.onDrop" @dragover="this.onDragOver" :disabled="uploadDisabled">
+        <div v-if="!disabledAfterUpload" class="upload-handler-drop-zone"
+            :class="{ 'upload-handler-drop-zone-disabled': uploadDisabled }" @drop="this.onDrop"
+            @dragover="this.onDragOver" :disabled="uploadDisabled">
             <div v-if="uploadDisabled" class="mb-3">{{ uploadDisabledMessage }}</div>
             <div v-if="!uploadDisabled" class="mb-3">{{ $t('drop_files') }}</div>
             <div class="mb-3">
-                <label class="btn btn-primary btn-file" :class="{'disabled': uploadDisabled}" >
-                    {{ $t('select_folder') }} <input :disabled="uploadDisabled" type="file" style="display: none;" id="foldersUpload" required
-                        multiple directory webkitdirectory allowdirs>
+                <label class="btn btn-primary btn-file" :class="{ 'disabled': uploadDisabled }">
+                    {{ $t('select_folder') }} <input ref="foldersUpload" :disabled="uploadDisabled" type="file"
+                        style="display: none;" id="foldersUpload" required multiple directory webkitdirectory allowdirs>
                 </label>
             </div>
             <div class="mb-3">
-                <label class="btn btn-primary btn-file" :class="{'disabled': uploadDisabled}">
-                    {{ $t('select_files') }} <input :disabled="uploadDisabled" type="file" style="display: none;" id="filesUpload" required multiple>
+                <label class="btn btn-primary btn-file" :class="{ 'disabled': uploadDisabled }">
+                    {{ $t('select_files') }} <input ref="filesUpload" :disabled="uploadDisabled" type="file"
+                        style="display: none;" id="filesUpload" required multiple>
                 </label>
             </div>
         </div>
         <div class="upload-report-list">
-            <UploadReport v-for="(upload, key) in lastUploadReports" :report="upload" :key="key" :showStudyDetails="showStudyDetails" :disableCloseReport="disableCloseReport"
+            <UploadReport v-for="(upload, key) in lastUploadReports" :report="upload" :key="key"
+                :showStudyDetails="showStudyDetails" :disableCloseReport="disableCloseReport"
                 @deletedUploadReport="onDeletedUploadReport"></UploadReport>
         </div>
     </div>
@@ -231,5 +272,4 @@ export default {
     border-color: #ff0000d2;
     cursor: not-allowed;
 }
-
 </style>
