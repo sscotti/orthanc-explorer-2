@@ -46,6 +46,11 @@
             // CXAS (ChestXRayAnatomySegmentation) configuration
             "CXAS": {
                 "EnableCXAS": true, // Enables CXAS segmentation functionality
+                "Levels": [
+                    "instance",
+                    "series"
+                ],
+                // Levels at which CXAS can be run, possible options bulk, instance, series, study
                 "DefaultOutputFormat": "png", // Default output format: "png", "json", "npy", or "dicom-seg"
                 "DefaultStoreSegmentation": true, // Whether to store segmentation results in Orthanc by default
                 // Available segmentation classes (class indices from CXAS)

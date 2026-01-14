@@ -18,13 +18,34 @@ export default {
             selectedStudiesIds: state => state.studies.selectedStudiesIds
         }),
         hasCXASButton() {
-            // Show button for all resource levels (study, series, instance, bulk)
-            // Backend will validate and handle invalid requests appropriately
-            // Default to true if config not loaded yet, or if EnableCXAS is not explicitly false
-            if (!this.uiOptions || !this.cxasOptions) {
+            // Check if CXAS is enabled
+            if (!this.uiOptions) {
                 return true; // Show by default if config not loaded
             }
-            return this.cxasOptions.EnableCXAS !== false;
+
+            // Check if CXAS configuration exists in uiOptions
+            if (!this.uiOptions.CXAS || Object.keys(this.cxasOptions).length === 0) {
+                // If CXAS config doesn't exist, check if EnableAI is true (fallback)
+                if (this.uiOptions.EnableAI !== false) {
+                    return true; // Show by default if EnableAI is not explicitly false
+                }
+                return false;
+            }
+
+            if (this.cxasOptions.EnableCXAS === false) {
+                return false;
+            }
+
+            // Check if current resource level is allowed in Levels configuration
+            const allowedLevels = this.cxasOptions.Levels;
+            console.log("allowedLevels", allowedLevels);
+            if (allowedLevels && Array.isArray(allowedLevels) && allowedLevels.length > 0) {
+                // Check if current resourceLevel is in the allowed levels
+                return allowedLevels.includes(this.resourceLevel);
+            }
+
+            // If Levels is not configured, show at all levels (backward compatibility)
+            return true;
         },
         buttonClasses() {
             if (this.smallIcons) {
@@ -75,7 +96,7 @@ export default {
         <button class="btn btn-sm btn-secondary m-1" type="button" data-bs-toggle="modal"
             v-bind:data-bs-target="'#' + modalId" :disabled="isBulkMode && !isBulkButtonEnabled()"
             :class="buttonClasses">
-            <i class="fa fa-brain" data-bs-toggle="tooltip" title="CXAS Segmentation"></i>
+            <span data-bs-toggle="tooltip" title="CXAS Segmentation" style="font-size: 0.8rem;">CXAS</span>
         </button>
         <CXASModal :id="modalId" :orthancStudyId="orthancStudyId" :orthancSeriesId="orthancSeriesId"
             :orthancInstanceId="orthancInstanceId" :isBulkMode="isBulkMode"
