@@ -41,57 +41,16 @@
             "EnableWorklists": true, // Enables the Worklist menu (provided that the worklist plugin is enabled)
             "EnableSettings": true, // Enables the settings menu/interface
             "EnableAuditLogs": true, // Enables the audit logs menu/interface (provided that the authorization plugin has audit logs enabled)
-            "EnableAI": true, // Enables the AI page menu/interface
             "EnableLinkToLegacyUi": true, // Enables a link to the legacy Orthanc UI
-            // CXAS (ChestXRayAnatomySegmentation) configuration
-            "CXAS": {
-                "EnableCXAS": true, // Enables CXAS segmentation functionality
-                "Levels": [
-                    "instance",
-                    "series"
-                ],
-                // Levels at which CXAS can be run, possible options bulk, instance, series, study
-                "DefaultOutputFormat": "png", // Default output format: "png", "json", "npy", or "dicom-seg"
-                "DefaultStoreSegmentation": true, // Whether to store segmentation results in Orthanc by default
-                // Available segmentation classes (class indices from CXAS)
-                // See docs/available_classes.md for full list
-                // Classes: 141="right upper zone lung", 142="right mid zone lung", 143="right lung base",
-                //          145="left upper zone lung", 146="left mid zone lung", 147="left lung base"
-                "AvailableClasses": [
-                    141,
-                    142,
-                    143,
-                    145,
-                    146,
-                    147
-                ], // Class indices available for selection
-                "DefaultEnabledClasses": [
-                    141,
-                    142,
-                    143,
-                    145,
-                    146,
-                    147
-                ], // Class indices enabled by default
-                // Alternative: specify classes with labels for UI display
-                "ClassLabels": {
-                    "141": "Right Upper Zone Lung",
-                    "142": "Right Mid Zone Lung",
-                    "143": "Right Lung Base",
-                    "145": "Left Upper Zone Lung",
-                    "146": "Left Mid Zone Lung",
-                    "147": "Left Lung Base"
-                }
-            },
             "EnableChangePassword": true, // Enables the 'change password' button in the side bar.  Only applicable if Keycloak is enabled
             "EnableViewerQuickButton": true, // Enables a button in the study list to directly open a viewer
-            "EnableReportQuickButton": true, // Enables a button in the study list to directly open a PDF report if available in the study
+            "EnableReportQuickButton": false, // Enables a button in the study list to directly open a PDF report if available in the study
             "EnableEditLabels": true, // Enables labels management (create/delete/assign/unassign)
             "AvailableLabels": [], // If not empty, this list prevents the creation of new labels and only allows add/remove of the listed labels.
             // This configuration may be overriden when you use Keycloak and an auth-service that implements roles/permissions API.
             "EnableLabelsCount": true, // Enables display of study count next to the each label (this might slow down the UI)
             "EnableMultiLabelsSearch": false, // Enables an additional Labels filter in the study list
-            "EnableShares": true, // Enables sharing studies.  See "Tokens" section below.
+            "EnableShares": false, // Enables sharing studies.  See "Tokens" section below.
             "DefaultShareDuration": 0, // [in days].  0 means no expiration date, 
             "ShareDurations": [
                 0,

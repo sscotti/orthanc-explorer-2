@@ -251,6 +251,21 @@ export default {
     },
     async mounted() {
         this.updateSelectAll();
+        // Auto-load studies if none are loaded
+        if (this.studiesIds.length === 0 && this.isConfigurationLoaded) {
+            await this.reloadStudyList();
+        }
+    },
+    watch: {
+        // Watch for configuration to load, then load studies
+        isConfigurationLoaded: {
+            immediate: true,
+            async handler(loaded) {
+                if (loaded && this.studiesIds.length === 0) {
+                    await this.reloadStudyList();
+                }
+            }
+        }
     },
     methods: {
         updateSelectAll() {

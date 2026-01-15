@@ -1,5 +1,4 @@
 <script>
-import { mapState } from "vuex"
 import cxasApi from "../api/cxasApi"
 import { getClassName, getEnabledClasses } from "../helpers/cxas-classes"
 import bootstrap from "bootstrap/dist/js/bootstrap.bundle.min.js"
@@ -14,35 +13,40 @@ export default {
             storeSegmentation: true,
             extractingFeatures: false,
             processing: false,
-            errorMessage: null
+            errorMessage: null,
+            // CXAS config loaded from API
+            cxasConfig: null
         }
     },
     computed: {
-        ...mapState({
-            uiOptions: state => state.configuration.uiOptions,
-            cxasOptions: state => state.configuration.uiOptions.CXAS || {}
-        }),
         isEnabled() {
-            return this.cxasOptions.EnableCXAS !== false;
+            return this.cxasConfig?.EnableCXAS !== false;
         },
         // Get available classes from configuration (default to [141, 142, 143, 145, 146, 147])
         availableClasses() {
-            if (this.cxasOptions.AvailableClasses && Array.isArray(this.cxasOptions.AvailableClasses)) {
-                return this.cxasOptions.AvailableClasses;
+            if (this.cxasConfig?.AvailableClasses && Array.isArray(this.cxasConfig.AvailableClasses)) {
+                return this.cxasConfig.AvailableClasses;
             }
             // Default classes if not configured
             return [141, 142, 143, 145, 146, 147];
         },
         // Get default enabled classes from configuration
         defaultEnabledClasses() {
-            if (this.cxasOptions.DefaultEnabledClasses && Array.isArray(this.cxasOptions.DefaultEnabledClasses)) {
-                return this.cxasOptions.DefaultEnabledClasses;
+            if (this.cxasConfig?.DefaultEnabledClasses && Array.isArray(this.cxasConfig.DefaultEnabledClasses)) {
+                return this.cxasConfig.DefaultEnabledClasses;
             }
             // Default: enable all available classes
             return this.availableClasses;
         },
     },
-    mounted() {
+    async mounted() {
+        // Load CXAS config from API
+        try {
+            this.cxasConfig = await cxasApi.getConfig();
+        } catch (error) {
+            console.warn("Failed to load CXAS config:", error);
+        }
+
         // Initialize selected classes from configuration
         this.selectedClasses = [...this.defaultEnabledClasses];
 
@@ -59,11 +63,11 @@ export default {
             this.errorMessage = null;
             // Reset to default values from configuration
             this.selectedClasses = [...this.defaultEnabledClasses];
-            if (this.cxasOptions.DefaultOutputFormat) {
-                this.outputFormat = this.cxasOptions.DefaultOutputFormat;
+            if (this.cxasConfig?.DefaultOutputFormat) {
+                this.outputFormat = this.cxasConfig.DefaultOutputFormat;
             }
-            if (this.cxasOptions.DefaultStoreSegmentation !== undefined) {
-                this.storeSegmentation = this.cxasOptions.DefaultStoreSegmentation;
+            if (this.cxasConfig?.DefaultStoreSegmentation !== undefined) {
+                this.storeSegmentation = this.cxasConfig.DefaultStoreSegmentation;
             }
         },
         toggleClass(classIndex) {
@@ -79,8 +83,8 @@ export default {
         },
         getClassLabel(classIndex) {
             // Get class label from configuration or helper
-            if (this.cxasOptions.ClassLabels && this.cxasOptions.ClassLabels[classIndex]) {
-                return this.cxasOptions.ClassLabels[classIndex];
+            if (this.cxasConfig?.ClassLabels && this.cxasConfig.ClassLabels[classIndex]) {
+                return this.cxasConfig.ClassLabels[classIndex];
             }
             return getClassName(classIndex);
         },

@@ -1,46 +1,47 @@
 <script>
 import { mapState } from "vuex"
 import CXASModal from "./CXASModal.vue"
-import SourceType from "../helpers/source-type"
+import cxasApi from "../api/cxasApi"
 
 export default {
     props: ["resourceOrthancId", "resourceDicomUid", "resourceLevel", "customClass", "smallIcons"],
     data() {
         return {
-            componentId: Math.random().toString(36).substring(7)
+            componentId: Math.random().toString(36).substring(7),
+            cxasConfig: null,
+            configLoaded: false
         };
+    },
+    async mounted() {
+        // Load CXAS config from API
+        try {
+            this.cxasConfig = await cxasApi.getConfig();
+            this.configLoaded = true;
+        } catch (error) {
+            console.warn("Failed to load CXAS config:", error);
+            this.configLoaded = true; // Mark as loaded even on error to show button
+        }
     },
     computed: {
         ...mapState({
             uiOptions: state => state.configuration.uiOptions,
-            cxasOptions: state => state.configuration.uiOptions.CXAS || {},
             studiesSourceType: state => state.studies.sourceType,
             selectedStudiesIds: state => state.studies.selectedStudiesIds
         }),
         hasCXASButton() {
-            // Check if CXAS is enabled
-            if (!this.uiOptions) {
-                return true; // Show by default if config not loaded
-            }
-
-            // Check if CXAS configuration exists in uiOptions
-            if (!this.uiOptions.CXAS || Object.keys(this.cxasOptions).length === 0) {
-                // If CXAS config doesn't exist, check if EnableAI is true (fallback)
-                if (this.uiOptions.EnableAI !== false) {
-                    return true; // Show by default if EnableAI is not explicitly false
-                }
+            // Wait for config to load
+            if (!this.configLoaded) {
                 return false;
             }
 
-            if (this.cxasOptions.EnableCXAS === false) {
+            // Check if CXAS is enabled
+            if (this.cxasConfig && this.cxasConfig.EnableCXAS === false) {
                 return false;
             }
 
             // Check if current resource level is allowed in Levels configuration
-            const allowedLevels = this.cxasOptions.Levels;
-            console.log("allowedLevels", allowedLevels);
+            const allowedLevels = this.cxasConfig?.Levels;
             if (allowedLevels && Array.isArray(allowedLevels) && allowedLevels.length > 0) {
-                // Check if current resourceLevel is in the allowed levels
                 return allowedLevels.includes(this.resourceLevel);
             }
 

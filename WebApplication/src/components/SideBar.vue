@@ -6,6 +6,7 @@ import LanguagePicker from "./LanguagePicker.vue";
 import { mapState, mapGetters } from "vuex"
 import { orthancApiUrl, oe2ApiUrl } from "../globalConfigurations";
 import api from "../orthancApi"
+import cxasApi from "../api/cxasApi"
 import SourceType from "../helpers/source-type";
 
 
@@ -18,6 +19,7 @@ export default {
             selectedLabel: null,
             modalitiesEchoStatus: {},
             labelsStudyCount: {},
+            cxasConfig: null,
         };
     },
     computed: {
@@ -56,12 +58,11 @@ export default {
             return this.uiOptions.EnableSettings;
         },
         hasAccessToAI() {
-            // Default to true if uiOptions not loaded yet or EnableAI is undefined
-            // Only hide if EnableAI is explicitly set to false
-            if (!this.uiOptions) {
-                return true; // Default to showing if config not loaded yet
+            // Check CXAS config for EnableAI (loaded from /cxas/config API)
+            if (this.cxasConfig && this.cxasConfig.EnableAI === false) {
+                return false;
             }
-            return this.uiOptions.EnableAI !== false;
+            return true; // Default to showing
         },
         hasAccessToWorklists() {
             return "orthanc-worklists" in this.installedPlugins && this.installedPlugins["orthanc-worklists"].Enabled && this.uiOptions.EnableWorklists;
@@ -155,7 +156,14 @@ export default {
             this.loadLabelsCount();
         }
     },
-    mounted() {
+    async mounted() {
+        // Load CXAS config for EnableAI setting
+        try {
+            this.cxasConfig = await cxasApi.getConfig();
+        } catch (error) {
+            console.warn("Failed to load CXAS config:", error);
+        }
+
         this.loadLabelsCount();
         this.$refs['modalities-collapsible'].addEventListener('show.bs.collapse', (e) => {
             for (const modality of Object.keys(this.queryableDicomModalities)) {
