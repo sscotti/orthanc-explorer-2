@@ -13,7 +13,10 @@ export default {
             storeSegmentation: true,
             extractingFeatures: false,
             processing: false,
+            processingFeatures: false,
             errorMessage: null,
+            successMessage: null,
+            extractedFeatures: null, // Store extracted features to display
             // CXAS config loaded from API
             cxasConfig: null
         }
@@ -38,6 +41,15 @@ export default {
             // Default: enable all available classes
             return this.availableClasses;
         },
+        // Get enabled features from configuration
+        enabledFeatures() {
+            if (this.cxasConfig?.Features && typeof this.cxasConfig.Features === 'object') {
+                // Return list of features where value is true
+                return Object.keys(this.cxasConfig.Features).filter(f => this.cxasConfig.Features[f] === true);
+            }
+            // Default features if not configured
+            return ['CTR', 'SCD'];
+        },
     },
     async mounted() {
         // Load CXAS config from API
@@ -59,8 +71,11 @@ export default {
     methods: {
         reset() {
             this.processing = false;
+            this.processingFeatures = false;
             this.extractingFeatures = false;
             this.errorMessage = null;
+            this.successMessage = null;
+            this.extractedFeatures = null;
             // Reset to default values from configuration
             this.selectedClasses = [...this.defaultEnabledClasses];
             if (this.cxasConfig?.DefaultOutputFormat) {
@@ -95,6 +110,8 @@ export default {
             try {
                 // Handle bulk mode vs single resource
                 let payload = null;
+                let resourceId = null;
+                let resourceLevel = null;
 
                 if (this.isBulkMode && this.selectedStudiesIds && this.selectedStudiesIds.length > 0) {
                     // Bulk mode: process multiple studies
@@ -108,9 +125,6 @@ export default {
                     };
                 } else {
                     // Single resource mode
-                    let resourceId = null;
-                    let resourceLevel = null;
-
                     if (this.orthancInstanceId) {
                         resourceId = this.orthancInstanceId;
                         resourceLevel = 'instance';
@@ -140,13 +154,10 @@ export default {
 
                 // Handle response
                 if (response.data && response.data.Success) {
-                    this.messageBus.emit('toast', {
-                        type: 'success',
-                        message: 'CXAS segmentation completed successfully'
-                    });
+                    this.messageBus.emit('show-toast', 'CXAS segmentation completed successfully');
 
-                    // If extracting features is enabled, do that too
-                    if (this.extractingFeatures) {
+                    // If extracting features is enabled, do that too (only for instance-level, single resource)
+                    if (this.extractingFeatures && resourceId && resourceLevel === 'instance') {
                         await this.extractFeatures(resourceId, resourceLevel);
                     }
 
@@ -164,31 +175,76 @@ export default {
             } catch (error) {
                 console.error('CXAS segmentation error:', error);
                 this.errorMessage = error.response?.data?.Message || error.message || 'Segmentation failed';
-                this.messageBus.emit('toast', {
-                    type: 'error',
-                    message: this.errorMessage
-                });
+                this.messageBus.emit('show-toast', this.errorMessage);
             } finally {
                 this.processing = false;
+            }
+        },
+        async runFeatureExtraction() {
+            this.processingFeatures = true;
+            this.errorMessage = null;
+
+            try {
+                // Feature extraction only works on instance level
+                let resourceId = null;
+                let resourceLevel = null;
+
+                if (this.orthancInstanceId) {
+                    resourceId = this.orthancInstanceId;
+                    resourceLevel = 'instance';
+                } else {
+                    throw new Error('Feature extraction only supports instance-level resources');
+                }
+
+                await this.extractFeatures(resourceId, resourceLevel);
+
+                // Don't close modal automatically - let user see the results and close manually
+                // The results are displayed in the modal via extractedFeatures and successMessage
+            } catch (error) {
+                console.error('CXAS feature extraction error:', error);
+                this.errorMessage = error.response?.data?.error || error.response?.data?.Message || error.message || 'Feature extraction failed';
+                this.messageBus.emit('show-toast', this.errorMessage);
+            } finally {
+                this.processingFeatures = false;
             }
         },
         async extractFeatures(resourceId, resourceLevel) {
             try {
                 const payload = {
                     [resourceLevel.charAt(0).toUpperCase() + resourceLevel.slice(1)]: resourceId,
-                    Features: ['CTR', 'SCD'] // Cardio-Thoracic Ratio, Spine-Center Distance
+                    Features: this.enabledFeatures // Use enabled features from config
                 };
 
                 const response = await cxasApi.extractFeatures(payload);
                 if (response.data && response.data.Success) {
-                    this.messageBus.emit('toast', {
-                        type: 'success',
-                        message: 'Feature extraction completed'
-                    });
+                    // Store extracted features to display in modal
+                    this.extractedFeatures = response.data.Features || null;
+                    
+                    // Format and display feature results
+                    let message = 'Feature extraction completed';
+                    if (response.data.Features && Object.keys(response.data.Features).length > 0) {
+                        const featureStrings = Object.entries(response.data.Features).map(([key, value]) => {
+                            // Format numeric values to 2-3 decimal places
+                            const numValue = parseFloat(value);
+                            const formattedValue = isNaN(numValue) ? value : numValue.toFixed(3);
+                            return `${key}: ${formattedValue}`;
+                        });
+                        message += ` - ${featureStrings.join(', ')}`;
+                    }
+                    
+                    this.successMessage = message;
+                    this.messageBus.emit('show-toast', message);
+                    
+                    // Log extracted features for debugging
+                    if (response.data.Features) {
+                        console.log('Extracted features:', response.data.Features);
+                    }
+                } else {
+                    throw new Error(response.data?.error || response.data?.Message || 'Feature extraction failed');
                 }
             } catch (error) {
                 console.error('Feature extraction error:', error);
-                // Don't fail the whole operation if feature extraction fails
+                throw error; // Re-throw to let caller handle it
             }
         },
         closeModal() {
@@ -261,17 +317,54 @@ export default {
                     <div class="mb-3">
                         <div class="form-check">
                             <input class="form-check-input" type="checkbox" v-model="extractingFeatures"
-                                id="cxas-features" :disabled="processing">
+                                id="cxas-features" :disabled="processing || !orthancInstanceId">
                             <label class="form-check-label" for="cxas-features">
-                                Extract features (CTR, SCD)
+                                Extract features after segmentation ({{ enabledFeatures.join(', ') }})
                             </label>
+                            <small v-if="!orthancInstanceId" class="form-text text-muted d-block">
+                                Note: Feature extraction only works on instance-level resources
+                            </small>
                         </div>
+                    </div>
+
+                    <!-- Feature Extraction Results -->
+                    <div v-if="extractedFeatures && Object.keys(extractedFeatures).length > 0" 
+                        class="mt-4 pt-3 border-top">
+                        <h6 class="mb-3">
+                            <i class="bi bi-clipboard-data"></i> Extracted Features
+                        </h6>
+                        <div class="table-responsive">
+                            <table class="table table-sm table-bordered">
+                                <thead>
+                                    <tr>
+                                        <th>Feature</th>
+                                        <th>Value</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    <tr v-for="(value, key) in extractedFeatures" :key="key">
+                                        <td><strong>{{ key }}</strong></td>
+                                        <td>{{ parseFloat(value).toFixed(3) }}</td>
+                                    </tr>
+                                </tbody>
+                            </table>
+                        </div>
+                        <small class="text-muted">
+                            <i class="bi bi-info-circle"></i> 
+                            Results are displayed for reference. PDF/DICOM report export coming soon.
+                        </small>
                     </div>
                 </div>
                 <div class="modal-footer">
                     <button type="button" class="btn btn-secondary" data-bs-dismiss="modal"
                         :disabled="processing">Cancel</button>
-                    <button type="button" class="btn btn-primary" @click="runSegmentation" :disabled="processing">
+                    <button v-if="orthancInstanceId" type="button" class="btn btn-info me-2" 
+                        @click="runFeatureExtraction" :disabled="processing || processingFeatures">
+                        <span v-if="processingFeatures" class="spinner-border spinner-border-sm me-2" role="status"
+                            aria-hidden="true"></span>
+                        {{ processingFeatures ? 'Processing...' : 'Extract Features Only' }}
+                    </button>
+                    <button type="button" class="btn btn-primary" @click="runSegmentation" :disabled="processing || processingFeatures">
                         <span v-if="processing" class="spinner-border spinner-border-sm me-2" role="status"
                             aria-hidden="true"></span>
                         {{ processing ? 'Processing...' : 'Run Segmentation' }}
